@@ -82,3 +82,11 @@ input[type="text"]:focus {
   outline: none;
   border-color: #5b8cc4;
 }
+
+:root {
+  --bg: #12263f;        /* slightly darker than the shield */
+  --surface: #1e3a5f;   /* the shield blue, for cards and inputs */
+  --border: #34557f;    /* lighter blue so edges stay visible */
+  --text: #eaf1f9;      /* off-white, softer than pure white */
+  --accent: #5b8cc4;
+}
