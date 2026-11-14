@@ -2,9 +2,6 @@
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.horizontal, input[type="text"] {
   background-color: var(--surface);
   border: 1px solid var(--border);
   corner-shape:"circle";
@@ -98,4 +95,13 @@ input[type="text"]:focus {
   --border: #d3dce8;    /* soft blue-gray border */
   --text: #1e3a5f;      /* dark blue text, matches the shield */
   --accent: #5b8cc4;    /* buttons, focus ring, switch highlights */
+}
+
+.gauge {
+  text-align: center;
+}
+
+#needle {
+  transform-origin: 100px 100px;   /* rotate around the hub */
+  transition: transform 0.5s ease; /* smooth movement */
 }
