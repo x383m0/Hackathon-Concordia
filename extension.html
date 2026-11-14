@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
@@ -19,23 +19,10 @@
   <div class="middle">
     <h3 id="Reg"> Settings </h3>
     <div class="horizontal">
-      <h4> On/Off </h4>
-      <label class="switch">
-      <input type="checkbox" id="toggleEtat">
-      <span class="slider"></span>
-      </label>
-    </div>
-    <div class="horizontal">
-      <h4> Eng/Fr </h4>
-      <label class="switch">
-      <input type="checkbox" id="toggleLangue">
-      <span class="slider"></span>
-      </label>
-    </div>
-    <div class="horizontal">
       <h4> API Key : </h4>
-      <input placeholder="..." type="text" id="api">
+      <input placeholder="gsk_..." type="password" id="api" autocomplete="off">
     </div>
+    <div id="result"></div>
   </div>
 
   <div class="bottom">
@@ -53,8 +40,12 @@
   </svg>
   </div>
 
+  <p class="score-number" id="score"></p>
   <p id="analyse"></p>
+  <div id="ai"></div>
   </div>
+
+  <script src="popup.js"></script>
 
   </body>
 

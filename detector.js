@@ -5,7 +5,7 @@
 //      + un bouton ("Review our Terms... [Continue]", "En continuant, vous acceptez...")
 // La valeur de la dernière expression est renvoyée au popup.
 (() => {
-  // ---------- Regex ----------
+  // Les expressions qui reconnaissent les termes, les phrases d'acceptation et les boutons
 
   // Le texte d'une case doit parler d'un document légal : termes, conditions, accord, contrat...
   // (?<!d['’])accord : évite "je suis d'accord" qui veut juste dire "I agree"
@@ -35,7 +35,7 @@
   const DIALOG_MAX = 1500; // taille max d'un bloc proche qui contient phrase + bouton
   const SCOPE_MAX = 2500;  // taille max du texte VISIBLE entre la phrase et le bouton éloigné
 
-  // ---------- Outils ----------
+  // Petites fonctions utiles
 
   function clean(t) {
     return (t || "").replace(/\s+/g, " ").trim();
@@ -72,7 +72,7 @@
     return clean(b.textContent) || clean(b.getAttribute("value")) || clean(b.getAttribute("aria-label"));
   }
 
-  // ---------- Mode 1 : cases à cocher ----------
+  // Mode 1 : les cases à cocher
 
   // Éléments qui peuvent contenir le texte d'une case à cocher
   function candidates(el) {
@@ -136,7 +136,7 @@
     });
   }
 
-  // ---------- Mode 2 : acceptation implicite (phrase + bouton) ----------
+  // Mode 2 : l'acceptation implicite, une phrase avec un lien et un bouton
 
   // Boutons qui SUIVENT la phrase dans la page (même s'ils sont très loin dans le HTML).
   // Il faut un bouton "valider" (Continue, Sign up...) et que le texte visible entre
@@ -195,7 +195,7 @@
     });
   }
 
-  // ---------- Diagnostic (pour comprendre pourquoi rien n'est détecté) ----------
+  // Infos de diagnostic, pour comprendre pourquoi rien n'est détecté
 
   // Pour un lien : la liste de ses parents avec taille du texte visible, phrase d'acceptation ?, nb de boutons
   function chainInfo(a) {
@@ -228,7 +228,6 @@
   const termsLinks = [...document.querySelectorAll("a[href]")].filter(isTermsLink);
 
   return {
-    found: checkboxes.length > 0 || implicit.length > 0,
     checkboxes: checkboxes,
     implicit: implicit,
     page: location.href,
