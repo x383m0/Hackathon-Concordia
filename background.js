@@ -6,8 +6,7 @@
 // Réponse : { ok: true, result } ou { ok: false, error }
 // =====================================================================
 
-importScripts("config.js"); // définit GROQ_API_KEY (voir config.example.js)
-const apiKey = GROQ_API_KEY;
+// La clé API Groq est saisie dans le popup et stockée dans chrome.storage.local (clé "groqApiKey").
 const MODEL = "openai/gpt-oss-120b";
 const MAX_CHARS = 400000; // limite de texte envoyé à Groq
 const MIN_CHARS = 300;   // en dessous, le texte est trop court pour être des ToU
@@ -75,6 +74,11 @@ Détails :
 // ---------- 1. Envoi du texte à Groq ----------
 
 async function analyser(texte) {
+  const { groqApiKey } = await chrome.storage.local.get("groqApiKey");
+  if (!groqApiKey) {
+    throw new Error("Ajoute ta clé API Groq dans le champ « API Key » du popup.");
+  }
+
   const propre = (texte || "").trim();
   if (propre.length < MIN_CHARS) {
     throw new Error("Texte trop court pour être analysé.");
@@ -84,7 +88,7 @@ async function analyser(texte) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${groqApiKey}`,
     },
     body: JSON.stringify({
       model: MODEL,

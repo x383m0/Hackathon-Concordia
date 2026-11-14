@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="horizontal">
+    <img src="icon.png" alt="Logo" class="top-img">
+    <div>
+      <h2 class="top-title"> Place Holder </h2>
+      <p class="top-subtitle"> Place Holder </p>
+    </div>
+  </div>
+
+  <div class="middle">
+    <h3> Settings </h3>
+    <div class="horizontal">
+      <h4> On/Off </h4>
+      <label class="switch">
+        <input type="checkbox" id="toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="horizontal">
+      <h4> API Key : </h4>
+      <input id="apikey" placeholder="gsk_..." type="password" autocomplete="off">
+    </div>
+    <div id="result"></div>
+  </div>
+
+  <div class="bottom">
+    <div class="gauge">
+      <svg viewBox="0 0 200 120" width="200" height="120">
+        <!-- colored zones -->
+        <path d="M20 100 A80 80 0 0 1 60 30.72"   fill="none" stroke="#e53935" stroke-width="16"/>
+        <path d="M60 30.72 A80 80 0 0 1 140 30.72" fill="none" stroke="#fbc02d" stroke-width="16"/>
+        <path d="M140 30.72 A80 80 0 0 1 180 100"  fill="none" stroke="#4caf50" stroke-width="16"/>
+
+        <!-- needle (drawn pointing left = 0) -->
+        <line id="needle" x1="100" y1="100" x2="35" y2="100"
+              stroke="#1e3a5f" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="100" cy="100" r="7" fill="#1e3a5f"/>
+      </svg>
+    </div>
+    <p class="score-number" id="score"></p>
+    <p id="analyse"></p>
+    <div id="ai"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
