@@ -68,3 +68,17 @@ body {
 .switch input:checked + .slider::before {
   transform: translateX(20px);
 }
+
+input[type="text"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box; /* keeps the padding inside the 100% width */
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #5b8cc4;
+}
