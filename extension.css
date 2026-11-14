@@ -14,3 +14,10 @@
   margin: 0;
   font-size: 18px;
 }
+
+body {
+  width: 400px;
+  min-height: 300px;
+  margin: 0;
+  padding: 16px;
+}
