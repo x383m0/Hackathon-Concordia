@@ -7,8 +7,9 @@
 (() => {
   // ---------- Regex ----------
 
-  // Le texte d'une case doit parler de termes/conditions...
-  const LEGAL = /(terms|\btos\b|conditions (g[ée]n[ée]rales|d['’ ]?utilisation|de (service|vente)|of use)|\bcgu\b|\bcgv\b)/i;
+  // Le texte d'une case doit parler d'un document légal : termes, conditions, accord, contrat...
+  // (?<!d['’])accord : évite "je suis d'accord" qui veut juste dire "I agree"
+  const LEGAL = /(\bterms\b|\btermes\b|\btos\b|\bconditions?\b|\bagreement\b|\bcontrat\b|(?<!d['’])\baccord\b|\bcgu\b|\bcgv\b|\beula\b|\blicen[cs]e\b|mentions l[ée]gales|\bprivacy\b|confidentialit[ée]|vie priv[ée]e|donn[ée]es personnelles)/i;
 
   // ...ET demander d'accepter (ça exclut "Recevoir la newsletter", etc.)
   const AGREE = /(agree|accept|i have read|i['’]ve read|acknowledge|consent|j['’]accepte|j['’]ai lu|d['’]accord|accepte|consens)/i;
@@ -17,11 +18,11 @@
   const NOTICE = /(\b(review|read|agree|accept|acknowledge|consent)\b|by (continuing|clicking|signing|creating|registering|using|proceeding)|\b(lire|lisez|consulter|consultez|veuillez)\b|prendre connaissance|prenez connaissance|en (continuant|cliquant|vous inscrivant|cr[ée]ant|utilisant)|\baccepte(z|r)?\b|\bd['’]accord\b)/i;
 
   // Texte précis d'un lien vers les termes (pas juste le mot "terms" dans une phrase)
-  const PHRASE = /(terms (of (use|service|sale)|(and|&|&amp;) conditions)|conditions (g[ée]n[ée]rales|d['’ ]?utilisation|de (service|vente))|mentions l[ée]gales)/i;
-  const EXACT = /^(terms|tos|cgu|cgv)$/i;
+  const PHRASE = /(terms (of (use|service|sale)|(and|&|&amp;) conditions)|termes (et conditions|d['’ ]?utilisation|du service)|conditions (g[ée]n[ée]rales|d['’ ]?utilisation|de (service|vente))|mentions l[ée]gales|(subscriber|user|service|license|membership|customer) agreement|contrat d['’ ]?(abonnement|utilisation|service)|accord d['’ ]?(abonnement|utilisation|souscription|service)|accord de souscription|privacy (policy|notice|statement)|(data|personal data) (protection|privacy) (policy|notice)|(politique|avis|charte|d[ée]claration) (de |sur la |relative [àa] la )?(confidentialit[ée]|vie priv[ée]e|protection des donn[ée]es)|politique de protection des donn[ée]es)/i;
+  const EXACT = /^(terms|tos|cgu|cgv|privacy|confidentialit[ée])$/i;
 
-  // Un segment du chemin de l'URL (ex: /legal/terms-of-service, /legal/consumer-terms)
-  const SEGMENT = /^((consumer|commercial|website|site|legal|general|user)-terms|terms|tos|cgu|cgv|termsofuse|termsofservice|terms-of-(use|service|sale)|terms-(and-)?conditions|conditions-g[ée]n[ée]rales|conditions-d-?utilisation)(\.html?|\.php)?$/i;
+  // Un segment du chemin de l'URL (ex: /legal/terms-of-service, /subscriber_agreement)
+  const SEGMENT = /^((consumer|commercial|website|site|legal|general|user)-terms|(subscriber|user|service|license|membership|customer)[-_]agreement|eula|terms|tos|cgu|cgv|termsofuse|termsofservice|terms-of-(use|service|sale)|terms-(and-)?conditions|conditions-g[ée]n[ée]rales|conditions-d-?utilisation|privacy([-_]?(policy|notice|statement))?|privacypolicy|politique-de-confidentialit[ée]|confidentialit[ée])(\.html?|\.php)?$/i;
 
   // Libellé d'un bouton qui valide / continue (anglais et français)
   const ACTION = /^(continue|continuer|accept|accepter|tout accepter|agree|i agree|j['’]accepte|sign up|sign in|log in|s['’]inscrire|se connecter|create( an)? account|cr[ée]er (un )?compte|register|join|next|suivant|submit|valider|confirm|confirmer|allow|autoriser|get started|commencer|ok|yes|oui)\b/i;
@@ -30,7 +31,7 @@
 
   // Limites du mode implicite
   const MAX_LEVELS = 10;   // combien de parents on remonte depuis le lien
-  const NOTICE_MAX = 400;  // taille max (caractères) de la phrase d'acceptation
+  const NOTICE_MAX = 600;  // taille max (caractères) de la phrase d'acceptation
   const DIALOG_MAX = 1500; // taille max d'un bloc proche qui contient phrase + bouton
   const SCOPE_MAX = 2500;  // taille max du texte VISIBLE entre la phrase et le bouton éloigné
 
@@ -174,8 +175,10 @@
       const t = visibleText(p);
       if (!notice && t.length <= NOTICE_MAX && NOTICE.test(t)) notice = p;
       if (t.length > DIALOG_MAX) break;
+      // On veut un bloc qui contient un vrai bouton "valider" (I agree, Continue...),
+      // pas seulement des boutons d'interface (menus déroulants, etc.)
       const found = [...p.querySelectorAll(BUTTONS)];
-      if (found.length > 0) { buttons = found; break; }
+      if (found.some(b => ACTION.test(buttonLabel(b)))) { buttons = found; break; }
     }
 
     // Pas de bouton dans un bloc proche : on cherche un bouton plus loin, après la phrase
@@ -186,7 +189,8 @@
 
     implicit.push({
       label: visibleText(notice).slice(0, 160),
-      buttons: buttons.slice(0, 3).map(buttonLabel).filter(Boolean),
+      // Libellés courts seulement (écarte "X" et les longs titres de menus déroulants)
+      buttons: buttons.map(buttonLabel).filter(l => l && l.length > 1 && l.length <= 30).slice(0, 3),
       link: a.href
     });
   }
@@ -209,6 +213,18 @@
     return out;
   }
 
+  // Pour une case : les textes trouvés autour d'elle et ce que les regex en pensent
+  function boxInfo(el) {
+    return {
+      checked: el.checked === true || el.getAttribute("aria-checked") === "true",
+      ariaLabel: clean(el.getAttribute("aria-label")).slice(0, 80),
+      candidates: candidates(el).slice(0, 3).map(c => {
+        const t = clean(c.textContent);
+        return { text: t.slice(0, 140), legal: LEGAL.test(t), agree: AGREE.test(t) };
+      })
+    };
+  }
+
   const termsLinks = [...document.querySelectorAll("a[href]")].filter(isTermsLink);
 
   return {
@@ -221,6 +237,7 @@
       termsLinks: termsLinks.length,
       buttons: document.querySelectorAll(BUTTONS).length,
       checkboxes: boxes.length,
+      boxes: boxes.slice(0, 5).map(boxInfo),
       // éléments qui cachent leur contenu dans un "shadow DOM" (invisible pour querySelectorAll)
       shadowHosts: [...document.querySelectorAll("*")].filter(e => e.shadowRoot).length,
       buttonLabels: [...document.querySelectorAll(BUTTONS)].slice(0, 8).map(buttonLabel),
