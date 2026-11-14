@@ -4,6 +4,14 @@
   gap: 12px;
 }
 
+.horizontal, input[type="text"] {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  corner-shape:"circle";
+  border-radius: 12px;
+  padding:8px;
+}
+
 .top-img {
   width: 65px;
   height: 65px;
@@ -20,7 +28,8 @@ body {
   min-height: 250px;
   margin: 0;
   padding: 16px;
-  background-color: #5F431E;
+  background-color: var(--bg);
+  color: var(--text);
 }
 
 .switch {
@@ -84,9 +93,9 @@ input[type="text"]:focus {
 }
 
 :root {
-  --bg: #12263f;        /* slightly darker than the shield */
-  --surface: #1e3a5f;   /* the shield blue, for cards and inputs */
-  --border: #34557f;    /* lighter blue so edges stay visible */
-  --text: #eaf1f9;      /* off-white, softer than pure white */
-  --accent: #5b8cc4;
+  --bg: #f4f7fb;        /* very light blue-gray background */
+  --surface: #ffffff;   /* cards and inputs */
+  --border: #d3dce8;    /* soft blue-gray border */
+  --text: #1e3a5f;      /* dark blue text, matches the shield */
+  --accent: #5b8cc4;    /* buttons, focus ring, switch highlights */
 }
