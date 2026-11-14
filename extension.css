@@ -1,16 +1,16 @@
-.card {
+.top {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.card-img {
+.top-img {
   width: 48px;
   height: 48px;
   object-fit: cover;
 }
 
-.card-title {
+.top-title {
   margin: 0;
   font-size: 18px;
 }
