@@ -62,7 +62,7 @@ body {
 
 /* when checked: change the color and slide the knob */
 .switch input:checked + .slider {
-  background: #4caf50;
+  background: #1E3A5F;
 }
 
 .switch input:checked + .slider::before {
