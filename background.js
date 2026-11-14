@@ -1,10 +1,7 @@
-// Module IA : va chercher le texte d'une page de ToU, l'envoie à Groq et renvoie l'analyse en JSON.
-// Le popup envoie { type: "ANALYZE_LINK", url } et reçoit { ok: true, result } ou { ok: false, error }.
-// La clé API est saisie dans le popup et gardée dans chrome.storage.local ("groqApiKey").
 
 const MODEL = "openai/gpt-oss-120b";
-const MAX_CHARS = 400000; // on n'envoie pas plus que ça à Groq
-const MIN_CHARS = 300; // en dessous, ce n'est pas assez de texte pour être des ToU
+const MAX_CHARS = 400000; 
+const MIN_CHARS = 300; 
 
 const PROMPT_TOU = `You are an expert in privacy, digital law and consumer protection.
 You are given the text of terms of use (ToU) or a privacy policy. Your job: help an ordinary user understand what they are accepting, with the emphasis on what can harm them.
