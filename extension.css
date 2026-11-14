@@ -20,6 +20,7 @@ body {
   min-height: 300px;
   margin: 0;
   padding: 16px;
+  background-color: #5F431E;
 }
 
 .switch {
