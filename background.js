@@ -1,7 +1,7 @@
 
 // Si un modèle est surchargé (503) ou limité (429), on réessaie puis on passe au suivant
-const MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
-const RETRYABLE = [429, 500, 503, 504];
+const MODELS = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-flash-lite-latest"];
+const RETRYABLE = [404, 429, 500, 503, 504]; // 404 = modèle retiré, on passe au suivant
 const MAX_CHARS = 1000000;
 const MIN_CHARS = 300; 
 
@@ -97,7 +97,7 @@ async function analyser(texte) {
       if (essai > 0) await attendre(2000);
       progres(`Asking ${model}${essai ? " (retry)" : ""}…`);
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 60000);
+      const timer = setTimeout(() => controller.abort(), 45000);
       try {
         res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -110,7 +110,7 @@ async function analyser(texte) {
         );
       } catch (e) {
         res = null;
-        lastError = e.name === "AbortError" ? "Gemini took more than 60 seconds to answer." : e.message;
+        lastError = e.name === "AbortError" ? "Gemini took more than 45 seconds to answer." : e.message;
         continue;
       } finally {
         clearTimeout(timer);
@@ -118,7 +118,9 @@ async function analyser(texte) {
       if (res.ok) break;
       lastError = `Gemini error ${res.status}: ${await res.text()}`;
       if (!RETRYABLE.includes(res.status)) throw new Error(lastError); // clé invalide, etc. : inutile de réessayer
+      progres(`${model} failed (${res.status}), trying the next one…`);
       res = null;
+      if (res === null && lastError.includes(" 404:")) break; // inutile de réessayer un modèle retiré
     }
     if (res) break;
   }
