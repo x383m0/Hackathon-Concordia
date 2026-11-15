@@ -30,10 +30,9 @@ FinePrint spots when a website asks you to accept its Terms of Service or Privac
 
 ## Permissions
 
-- `activeTab` + `scripting`: read the page you have open, only when you open the popup.
+- `activeTab` + `scripting`: read the page you have open and the terms page the link leads to.
 - `storage`: keep your API key and recent analyses in your browser.
-- Access to `generativelanguage.googleapis.com`: to call Gemini.
-- Per-site access (asked when you click **Analyze**): to read the terms page the link leads to. FinePrint never gets blanket access to all sites.
+- Access to all sites (`<all_urls>`): needed to open and read the terms page, which can be on any site. Fine for personal use; for a public release it should be narrowed.
 
 Results are cached for 7 days (up to 50 documents) so repeat analyses are instant.
 

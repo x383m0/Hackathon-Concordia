@@ -204,8 +204,7 @@ function friendlyError(message) {
 }
 
 // Demande l'analyse au background et affiche le résultat.
-// Renvoie un site à autoriser si le background en a besoin (redirection vers un autre site), sinon null.
-async function runAnalysis(url, button, extraOrigin, force = false) {
+async function runAnalysis(url, button, force = false) {
   const label = button.textContent;
   button.disabled = true;
   button.textContent = "Analyzing…";
@@ -213,25 +212,13 @@ async function runAnalysis(url, button, extraOrigin, force = false) {
   showAi(text("⏳ AI analysis (a few seconds)…"));
 
   try {
-    // Permission limitée au site du lien (demandée ici car il faut un clic de l'utilisateur)
-    const origins = [new URL(url).origin + "/*"];
-    if (extraOrigin) origins.push(extraOrigin + "/*");
-    const granted = await chrome.permissions.request({ origins });
-    if (!granted) throw new Error("Permission refused: FinePrint needs access to the terms page to read it.");
-
     // Sécurité : si le background ne répond jamais, on arrête d'attendre
     const timeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("No answer after 2 minutes. Reload the extension and try again.")), 120000)
     );
     const response = await Promise.race([chrome.runtime.sendMessage({ type: "ANALYZE_LINK", url, force }), timeout]);
-    if (!response?.ok) {
-      if (response?.needOrigin) {
-        showAi(text(`⚠️ The link leads to ${response.needOrigin}. Click Analyze again to allow it.`), true);
-        return response.needOrigin;
-      }
-      throw new Error(response?.error || "Unknown error");
-    }
-    renderAiResult(response.result, () => runAnalysis(url, button, null, true));
+    if (!response?.ok) throw new Error(response?.error || "Unknown error");
+    renderAiResult(response.result, () => runAnalysis(url, button, true));
   } catch (e) {
     const box = document.createElement("div");
     box.appendChild(text("⚠️ " + friendlyError(e.message)));
@@ -245,7 +232,6 @@ async function runAnalysis(url, button, extraOrigin, force = false) {
     button.disabled = false;
     button.textContent = label;
   }
-  return null;
 }
 
 function addAnalyzeButton(parent, url) {
@@ -254,10 +240,7 @@ function addAnalyzeButton(parent, url) {
   const button = document.createElement("button");
   button.textContent = "Analyze with AI";
   button.style.marginTop = "6px";
-  let extraOrigin = null;
-  button.addEventListener("click", async () => {
-    extraOrigin = await runAnalysis(url, button, extraOrigin);
-  });
+  button.addEventListener("click", () => runAnalysis(url, button));
   parent.appendChild(button);
 }
 

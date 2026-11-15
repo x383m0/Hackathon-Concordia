@@ -177,19 +177,8 @@ function lireTextePage() {
 }
 
 async function lirePage(tabId) {
-  try {
-    const [injection] = await chrome.scripting.executeScript({ target: { tabId }, func: lireTextePage });
-    return injection?.result;
-  } catch (e) {
-    // Chrome écrit l'adresse refusée dans le message : on s'en sert pour demander la permission au bon site
-    const m = /url "([^"]+)"/.exec(e.message || "");
-    if (m || /Cannot access|permission/i.test(e.message || "")) {
-      const err = new Error("Permission needed to read the page the link leads to.");
-      try { err.needOrigin = m ? new URL(m[1]).origin : null; } catch { err.needOrigin = null; }
-      throw err;
-    }
-    throw e;
-  }
+  const [injection] = await chrome.scripting.executeScript({ target: { tabId }, func: lireTextePage });
+  return injection?.result;
 }
 
 function attendre(ms) {
@@ -222,14 +211,6 @@ async function texteDepuisLien(url) {
   }
 
   progres("Opening the terms page…");
-  // Le site doit avoir été autorisé par l'utilisateur (permission optionnelle demandée par le popup)
-  const origin = new URL(url).origin;
-  if (!(await chrome.permissions.contains({ origins: [origin + "/*"] }))) {
-    const err = new Error("Permission needed to read this site.");
-    err.needOrigin = origin;
-    throw err;
-  }
-
   const tab = await chrome.tabs.create({ url, active: false });
   try {
     await attendreChargement(tab.id);
@@ -268,7 +249,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return { ok: true, result };
   })()
     .then(sendResponse)
-    .catch((err) => sendResponse({ ok: false, error: err.message, needOrigin: err.needOrigin || null }));
+    .catch((err) => sendResponse({ ok: false, error: err.message }));
 
   return true; // la réponse arrive plus tard
 });
