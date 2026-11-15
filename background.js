@@ -5,13 +5,14 @@ const RETRYABLE = [404, 429, 500, 503, 504]; // 404 = modèle retiré, on passe 
 const MAX_CHARS = 1000000;
 const MIN_CHARS = 300; 
 
-const PROMPT_TOU = `You are an expert in privacy, digital law and consumer protection.
+function promptTou(langName) {
+  return `You are an expert in privacy, digital law and consumer protection.
 You are given the text of terms of use (ToU) or a privacy policy. Your job: help an ordinary user understand what they are accepting, with the emphasis on what can harm them.
 
 RULES
 - Base yourself ONLY on the text provided. Do not invent anything and do not add what you know about the company.
 - If a piece of information is missing from the text, write "not specified" instead of guessing.
-- Write in English, in plain language, without legal jargon.
+- Write every text field in ${langName}, in plain language, without legal jargon. Keep the JSON keys and the exact values of "recommendation" and "severity" in English as specified below.
 - Each list item is a short sentence (25 words maximum), starting with the most important information.
 - Sort each list from the most dangerous to the least dangerous for the user.
 - Every item of "risks" and "favorable_points" MUST be an object with a non-empty "title" and "explanation" (never a plain string, never an empty object).
@@ -64,32 +65,86 @@ Details:
 - "favorable_points": 0 to 5 items. Empty list [] if there are none.
 - "recommendation": "avoid" if there are several "high" risks; "accept with caution" if there are isolated medium or high risks; "accept" only if the text is globally protective.
 - "criteria": 0 = no or not mentioned, 1 = partial or vague, 2 = yes, clearly. Do not compute any overall score: it is computed separately.`;
+}
 
 // Envoie le texte à Gemini et renvoie le JSON de l'analyse
 // Cache des analyses par adresse : évite de refaire (et de payer) une analyse récente
 const CACHE_TTL = 7 * 24 * 3600 * 1000; // 7 jours
 const CACHE_MAX = 50;
 
-async function lireCache(url) {
+async function lireCache(url, lang) {
+  const key = `${lang}|${url}`;
   const { analysisCache = {} } = await chrome.storage.local.get("analysisCache");
-  const entry = analysisCache[url];
+  const entry = analysisCache[key];
   return entry && Date.now() - entry.time < CACHE_TTL ? entry.result : null;
 }
 
-async function ecrireCache(url, result) {
+async function ecrireCache(url, lang, result) {
   const { analysisCache = {} } = await chrome.storage.local.get("analysisCache");
-  analysisCache[url] = { time: Date.now(), result };
+  analysisCache[`${lang}|${url}`] = { time: Date.now(), result };
   const recent = Object.entries(analysisCache).sort((a, b) => b[1].time - a[1].time).slice(0, CACHE_MAX);
   await chrome.storage.local.set({ analysisCache: Object.fromEntries(recent) });
 }
 
-// Dit au popup où on en est (il l'ignore s'il est fermé)
-function progres(text) {
-  console.log("[FinePrint]", text);
-  chrome.runtime.sendMessage({ type: "PROGRESS", text }).catch(() => {});
+// ----- Tâches d'analyse -----
+// L'état de chaque analyse est écrit dans chrome.storage.session : le popup se ferme dès qu'on change d'onglet,
+// mais l'analyse continue ici et le popup relit simplement l'état quand on le rouvre.
+const STALE_MS = 150000;
+
+async function setJob(key, patch) {
+  const current = (await chrome.storage.session.get(key))[key] || {};
+  const next = { ...current, ...patch, updated: Date.now() };
+  await chrome.storage.session.set({ [key]: next });
+  return next;
 }
 
-async function analyser(texte) {
+// Petit badge sur l'icône : … en cours, ✓ terminé, ! erreur (le popup l'efface à l'ouverture)
+function badge(text, color) {
+  chrome.action.setBadgeText({ text });
+  if (color) chrome.action.setBadgeBackgroundColor({ color });
+}
+
+async function nettoyerAnciennesTaches() {
+  const all = await chrome.storage.session.get(null);
+  const old = Object.keys(all).filter((k) => k.startsWith("job:") && Date.now() - (all[k].updated || 0) > 3600000);
+  if (old.length) await chrome.storage.session.remove(old);
+}
+
+async function lancerAnalyse(url, force, lang) {
+  const key = `job:${url}`;
+  const existing = (await chrome.storage.session.get(key))[key];
+  if (existing?.status === "running" && Date.now() - existing.updated < STALE_MS) return; // déjà en cours
+
+  // Garde le service worker éveillé pendant l'analyse
+  const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(), 20000);
+  badge("…", "#5b8cc4");
+  try {
+    await nettoyerAnciennesTaches();
+    await setJob(key, { status: "running", step: "starting", result: null, error: null, lang });
+
+    if (!force) {
+      const cached = await lireCache(url, lang);
+      if (cached) {
+        await setJob(key, { status: "done", step: null, result: { ...cached, cached: true } });
+        badge("✓", "#137333");
+        return;
+      }
+    }
+
+    const page = await texteDepuisLien(url, key);
+    const result = await analyser(page.text, key, lang);
+    await ecrireCache(url, lang, result);
+    await setJob(key, { status: "done", step: null, result });
+    badge("✓", "#137333");
+  } catch (err) {
+    await setJob(key, { status: "error", step: null, error: err.message });
+    badge("!", "#c5221f");
+  } finally {
+    clearInterval(keepAlive);
+  }
+}
+
+async function analyser(texte, jobKey, lang) {
   const { geminiApiKey, geminiModel } = await chrome.storage.local.get(["geminiApiKey", "geminiModel"]);
   const MODELS = [(geminiModel || "").trim() || DEFAULT_MODEL];
   if (!geminiApiKey) {
@@ -101,9 +156,9 @@ async function analyser(texte) {
     throw new Error("Text too short to be analyzed.");
   }
 
-  progres(`Sending ${propre.length} characters to Gemini…`);
+  await setJob(jobKey, { step: "sending", n: propre.length });
   const body = JSON.stringify({
-    systemInstruction: { parts: [{ text: PROMPT_TOU }] },
+    systemInstruction: { parts: [{ text: promptTou(lang === "fr" ? "French (français)" : "English") }] },
     contents: [{ role: "user", parts: [{ text: propre.slice(0, MAX_CHARS) }] }],
     generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
   });
@@ -113,7 +168,7 @@ async function analyser(texte) {
   for (const model of MODELS) {
     for (let essai = 0; essai < 2; essai++) {
       if (essai > 0) await attendre(2000);
-      progres(`Asking ${model}${essai ? " (retry)" : ""}…`);
+      await setJob(jobKey, { step: essai ? "retry" : "asking", model });
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 45000);
       try {
@@ -136,7 +191,6 @@ async function analyser(texte) {
       if (res.ok) break;
       lastError = `Gemini error ${res.status}: ${await res.text()}`;
       if (!RETRYABLE.includes(res.status)) throw new Error(lastError); // clé invalide, etc. : inutile de réessayer
-      progres(`${model} failed (${res.status}), trying the next one…`);
       res = null;
       if (/ (404|429):/.test(lastError)) break; // modèle retiré ou quota atteint : réessayer ne sert à rien
     }
@@ -205,16 +259,16 @@ function attendreChargement(tabId) {
 }
 
 // Ouvre le lien dans un onglet caché, lit son texte, puis referme l'onglet
-async function texteDepuisLien(url) {
+async function texteDepuisLien(url, jobKey) {
   if (!/^https?:\/\//i.test(url || "")) {
     throw new Error("Invalid link: only http(s) addresses are accepted.");
   }
 
-  progres("Opening the terms page…");
+  await setJob(jobKey, { step: "opening" });
   const tab = await chrome.tabs.create({ url, active: false });
   try {
     await attendreChargement(tab.id);
-    progres("Reading the page…");
+    await setJob(jobKey, { step: "reading" });
     await attendre(1500); // certaines pages se construisent en JavaScript après le chargement
 
     let page = await lirePage(tab.id);
@@ -235,21 +289,8 @@ async function texteDepuisLien(url) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== "ANALYZE_LINK") return;
-  progres("Started (v3 background)");
-
-  (async () => {
-    if (!message.force) {
-      const cached = await lireCache(message.url);
-      if (cached) return { ok: true, result: { ...cached, cached: true } };
-    }
-    const page = await texteDepuisLien(message.url);
-    const result = await analyser(page.text);
-    await ecrireCache(message.url, result);
-    return { ok: true, result };
-  })()
-    .then(sendResponse)
-    .catch((err) => sendResponse({ ok: false, error: err.message }));
-
-  return true; // la réponse arrive plus tard
+  if (message?.type !== "START_ANALYSIS") return;
+  // On répond tout de suite : l'analyse continue même si le popup se ferme
+  lancerAnalyse(message.url, !!message.force, message.lang === "fr" ? "fr" : "en");
+  sendResponse({ started: true });
 });

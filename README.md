@@ -9,7 +9,7 @@ FinePrint spots when a website asks you to accept its Terms of Service or Privac
 
 1. Open the popup on a page with a sign-up form or a "by continuing you accept…" notice.
 2. FinePrint detects the terms or privacy-policy link (checkbox or implicit acceptance, in English and French).
-3. Click **Analyze with AI**. The linked document is opened in a hidden tab, its text is read, and Gemini summarizes it.
+3. Click **Analyze with AI**. The linked document is opened in a hidden tab, its text is read, and Gemini summarizes it. The analysis runs in the background, so you can switch tabs while it works. The toolbar icon shows … while it runs, ✓ when done and ! on error, and reopening the popup shows the result.
 4. You get a recommendation, a list of risks and favorable points (each with the exact quote from the terms when available), and a 0–100 score on the gauge.
 
 ## Install
@@ -17,7 +17,7 @@ FinePrint spots when a website asks you to accept its Terms of Service or Privac
 1. Clone or download this repository.
 2. Open `chrome://extensions` and turn on **Developer mode**.
 3. Click **Load unpacked** and select the repository folder (the one containing `manifest.json`).
-4. Get a free Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Click **⚙ Settings** in the popup (or right-click the extension icon → Options) and paste it there. You can also choose the Gemini model and clear saved analyses.
+4. Get a free Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Click **⚙ Settings** in the popup (or right-click the extension icon → Options) and paste it there. You can also choose the Gemini model, the language (English or French, which is also the language of the analysis), the theme (automatic, light or dark) and clear saved analyses. The popup has a quick EN/FR switch.
 
 ## Files
 
@@ -25,9 +25,10 @@ FinePrint spots when a website asks you to accept its Terms of Service or Privac
 |---|---|
 | `manifest.json` | Extension manifest (Manifest V3) |
 | `extension.html` / `extension.css` / `extension.js` | Popup UI, gauge and score calculation |
-| `options.html` / `options.css` / `options.js` | Settings page (API key, model, cache) |
+| `options.html` / `options.css` / `options.js` | Settings page (API key, model, language, theme, cache) |
+| `common.js` / `theme.css` | Shared English/French texts and light/dark theme |
 | `detector.js` | Injected in the page to find terms acceptances |
-| `background.js` | Opens the terms page, reads it, calls Gemini (default `gemini-3.5-flash-lite`) |
+| `background.js` | Runs the analysis in the background: opens the terms page, reads it, calls Gemini (default `gemini-3.5-flash-lite`), keeps job state |
 
 ## Permissions
 
