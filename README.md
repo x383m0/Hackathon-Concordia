@@ -35,4 +35,4 @@ FinePrint spots when a website asks you to accept its Terms of Service or Privac
 
 ## Presentation
 
-See [Presentation.md](Presentation.md).
+[Slides](https://docs.google.com/presentation/d/113rWbCeLpDQ16BDayJHOl-AymdDe-8NRU9l6fvCi4Xo/edit?usp=sharing)
