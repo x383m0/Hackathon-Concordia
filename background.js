@@ -1,6 +1,7 @@
 
 // Si un modèle est surchargé (503) ou limité (429), on réessaie puis on passe au suivant
-const MODELS = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-flash-lite-latest"];
+const MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash"];
+// Quota gratuit : 500 requêtes/jour pour les modèles Lite, seulement 20 pour les Flash, donc on évite de gaspiller
 const RETRYABLE = [404, 429, 500, 503, 504]; // 404 = modèle retiré, on passe au suivant
 const MAX_CHARS = 1000000;
 const MIN_CHARS = 300; 
@@ -120,7 +121,7 @@ async function analyser(texte) {
       if (!RETRYABLE.includes(res.status)) throw new Error(lastError); // clé invalide, etc. : inutile de réessayer
       progres(`${model} failed (${res.status}), trying the next one…`);
       res = null;
-      if (res === null && lastError.includes(" 404:")) break; // inutile de réessayer un modèle retiré
+      if (/ (404|429):/.test(lastError)) break; // modèle retiré ou quota atteint : réessayer ne sert à rien
     }
     if (res) break;
   }
