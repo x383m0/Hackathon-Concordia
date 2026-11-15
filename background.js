@@ -1,6 +1,6 @@
 
-const MODEL = "openai/gpt-oss-120b";
-const MAX_CHARS = 400000; 
+const MODEL = "gemini-flash-latest";
+const MAX_CHARS = 1000000;
 const MIN_CHARS = 300; 
 
 const PROMPT_TOU = `You are an expert in privacy, digital law and consumer protection.
@@ -63,11 +63,11 @@ Details:
 - "recommendation": "avoid" if there are several "high" risks; "accept with caution" if there are isolated medium or high risks; "accept" only if the text is globally protective.
 - "criteria": 0 = no or not mentioned, 1 = partial or vague, 2 = yes, clearly. Do not compute any overall score: it is computed separately.`;
 
-// Envoie le texte à Groq et renvoie le JSON de l'analyse
+// Envoie le texte à Gemini et renvoie le JSON de l'analyse
 async function analyser(texte) {
-  const { groqApiKey } = await chrome.storage.local.get("groqApiKey");
-  if (!groqApiKey) {
-    throw new Error('Add your Groq API key in the "API Key" field of the popup.');
+  const { geminiApiKey } = await chrome.storage.local.get("geminiApiKey");
+  if (!geminiApiKey) {
+    throw new Error('Add your Gemini API key in the "API Key" field of the popup.');
   }
 
   const propre = (texte || "").trim();
@@ -75,31 +75,31 @@ async function analyser(texte) {
     throw new Error("Text too short to be analyzed.");
   }
 
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${groqApiKey}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0.1,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: PROMPT_TOU },
-        { role: "user", content: propre.slice(0, MAX_CHARS) },
-      ],
-    }),
-  });
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": geminiApiKey,
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: PROMPT_TOU }] },
+        contents: [{ role: "user", parts: [{ text: propre.slice(0, MAX_CHARS) }] }],
+        generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
+      }),
+    }
+  );
 
   if (!res.ok) {
-    throw new Error(`Groq error ${res.status}: ${await res.text()}`);
+    throw new Error(`Gemini error ${res.status}: ${await res.text()}`);
   }
 
   const data = await res.json();
+  const content = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
   let resultat;
   try {
-    resultat = JSON.parse(data.choices?.[0]?.message?.content);
+    resultat = JSON.parse(content);
   } catch {
     throw new Error("The model did not return valid JSON.");
   }
