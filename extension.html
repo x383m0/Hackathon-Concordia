@@ -1,48 +1,50 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FinePrint</title>
+  <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="extension.css">
 </head>
+<body>
+  <header class="card brand">
+    <div class="logo"><img src="icon.png" alt="" class="top-img"></div>
+    <div class="brand-text">
+      <h1 class="top-title">FinePrint</h1>
+      <p class="top-subtitle" data-i18n="tagline"></p>
+    </div>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+        <button type="button" data-lang="fr" aria-pressed="false">FR</button>
+      </div>
+      <button id="settings" class="icon-btn" type="button" data-i18n-title="settings">⚙</button>
+    </div>
+  </header>
 
-  <body>
-  <div class="horizontal">
-  <img src="icon.png" alt="Logo" class="top-img">
-  <div>
-    <h2 class="top-title"> FinePrint </h2>
-    <p class="top-subtitle"> Because nobody reads the terms </p>
-  </div>
-  </div>
-  
-  <div class="middle">
-    <button id="settings" type="button">⚙ Settings (API key &amp; model)</button>
-    <div id="result"></div>
-  </div>
+  <button id="keyhint" class="keyhint" type="button" hidden data-i18n="keyHint"></button>
 
-  <div class="bottom">
-  <div class="gauge">
-  <svg viewBox="0 0 200 120" width="200" height="120">
-    <!-- colored zones -->
-    <path d="M20 100 A80 80 0 0 1 60 30.72"   fill="none" stroke= "#e53935" stroke-width="16"/>
-    <path d="M60 30.72 A80 80 0 0 1 140 30.72" fill="none" stroke="#fbc02d" stroke-width="16"/>
-    <path d="M140 30.72 A80 80 0 0 1 180 100"  fill="none" stroke="#4caf50" stroke-width="16"/>
+  <section id="result"></section>
 
-    <!-- needle (drawn pointing left = 0) -->
-    <line id="needle" x1="100" y1="100" x2="35" y2="100"
-          stroke="#1e3a5f" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="100" cy="100" r="7" fill="#1e3a5f"/>
-  </svg>
-  </div>
+  <section class="bottom">
+    <div class="gauge">
+      <svg viewBox="0 0 200 120" width="200" height="120" aria-hidden="true">
+        <path d="M20 100 A80 80 0 0 1 60 30.72" fill="none" stroke="#e53935" stroke-width="16"/>
+        <path d="M60 30.72 A80 80 0 0 1 140 30.72" fill="none" stroke="#fbc02d" stroke-width="16"/>
+        <path d="M140 30.72 A80 80 0 0 1 180 100" fill="none" stroke="#4caf50" stroke-width="16"/>
+        <g id="sweep">
+          <line id="needle" x1="100" y1="100" x2="35" y2="100" stroke-width="4" stroke-linecap="round"/>
+          <circle id="hub" cx="100" cy="100" r="7"/>
+        </g>
+      </svg>
+    </div>
+    <p class="score-number" id="score"></p>
+    <p id="analyse"></p>
+    <div id="ai"></div>
+  </section>
 
-  <p class="score-number" id="score"></p>
-  <p id="analyse"></p>
-  <div id="ai"></div>
-  </div>
-
+  <script src="common.js"></script>
   <script src="extension.js"></script>
-
-  </body>
-
+</body>
 </html>

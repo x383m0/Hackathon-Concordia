@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FinePrint settings</title>
+  <title>FinePrint</title>
+  <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
@@ -11,38 +12,56 @@
     <header>
       <img src="icon.png" alt="" width="48" height="48">
       <div>
-        <h1>FinePrint settings</h1>
-        <p>Because nobody reads the terms.</p>
+        <h1 data-i18n="optTitle"></h1>
+        <p data-i18n="tagline"></p>
       </div>
     </header>
 
     <section>
-      <label for="key">Gemini API key</label>
+      <label for="key" data-i18n="keyLabel"></label>
       <div class="row">
         <input id="key" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false">
-        <button id="toggle" type="button">Show</button>
+        <button id="toggle" type="button" data-i18n="show"></button>
       </div>
-      <p class="help">Free at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. The key stays in this browser and is only sent to Google.</p>
+      <p class="help"><span data-i18n="keyHelp1"></span> <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a><span data-i18n="keyHelp2"></span></p>
     </section>
 
     <section>
-      <label for="model">Model</label>
+      <label for="model" data-i18n="modelLabel"></label>
       <input id="model" type="text" list="models" placeholder="gemini-3.5-flash-lite" autocomplete="off" spellcheck="false">
       <datalist id="models">
         <option value="gemini-3.5-flash-lite"></option>
         <option value="gemini-3.1-flash-lite"></option>
         <option value="gemini-3.8-flash"></option>
       </datalist>
-      <p class="help">Leave empty for the default (<code>gemini-3.5-flash-lite</code>: fast, about 500 free requests a day). Flash models are smarter but the free tier is limited to about 20 a day.</p>
+      <p class="help" data-i18n="modelHelp"></p>
     </section>
 
     <section>
-      <button id="clear-cache" type="button">Clear saved analyses</button>
+      <label for="lang" data-i18n="langLabel"></label>
+      <select id="lang">
+        <option value="auto" data-i18n="langAuto"></option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+      </select>
+      <p class="help" data-i18n="langHelp"></p>
+
+      <label for="theme" class="spaced" data-i18n="themeLabel"></label>
+      <select id="theme">
+        <option value="auto" data-i18n="themeAuto"></option>
+        <option value="light" data-i18n="themeLight"></option>
+        <option value="dark" data-i18n="themeDark"></option>
+      </select>
+    </section>
+
+    <section>
+      <button id="clear-cache" type="button" data-i18n="clearCache"></button>
       <p class="help" id="cache-info"></p>
     </section>
 
     <p id="status" role="status" aria-live="polite"></p>
   </main>
+  <script src="common.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

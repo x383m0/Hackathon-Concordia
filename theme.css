@@ -1,0 +1,51 @@
+/* Couleurs partagées par le popup et la page de réglages. Clair par défaut, sombre automatique ou choisi. */
+:root {
+  color-scheme: light;
+  --bg: #f4f7fb;
+  --surface: #ffffff;
+  --border: #d3dce8;
+  --text: #1e3a5f;
+  --muted: #5d7391;
+  --accent: #5b8cc4;
+  --ok-bg: #e6f4ea;   --ok-fg: #137333;
+  --bad-bg: #fce8e6;  --bad-fg: #c5221f;
+  --warn-bg: #fef7e0; --warn-fg: #b06000;
+  --logo-bg: transparent;
+  --shadow: 0 1px 2px rgba(30, 58, 95, .08), 0 4px 12px rgba(30, 58, 95, .06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1926;
+    --surface: #1a2a3d;
+    --border: #2f445d;
+    --text: #e4ecf5;
+    --muted: #9db2cb;
+    --accent: #8db7e8;
+    --ok-bg: #17331f;   --ok-fg: #81c995;
+    --bad-bg: #3a1b1b;  --bad-fg: #f28b82;
+    --warn-bg: #3a2f12; --warn-fg: #fdd663;
+    --logo-bg: #e8eef7;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 12px rgba(0, 0, 0, .3);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1926;
+  --surface: #1a2a3d;
+  --border: #2f445d;
+  --text: #e4ecf5;
+  --muted: #9db2cb;
+  --accent: #8db7e8;
+  --ok-bg: #17331f;   --ok-fg: #81c995;
+  --bad-bg: #3a1b1b;  --bad-fg: #f28b82;
+  --warn-bg: #3a2f12; --warn-fg: #fdd663;
+  --logo-bg: #e8eef7;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 12px rgba(0, 0, 0, .3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
