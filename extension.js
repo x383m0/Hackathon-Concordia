@@ -202,11 +202,11 @@ function addAnalyzeButton(parent, url) {
 }
 
 // La clé API reste dans le navigateur, elle n'est jamais écrite dans le code
-chrome.storage.local.get("groqApiKey").then(({ groqApiKey }) => {
-  if (groqApiKey) keyInput.value = groqApiKey;
+chrome.storage.local.get("geminiApiKey").then(({ geminiApiKey }) => {
+  if (geminiApiKey) keyInput.value = geminiApiKey;
 });
 keyInput.addEventListener("input", () => {
-  chrome.storage.local.set({ groqApiKey: keyInput.value.trim() });
+  chrome.storage.local.set({ geminiApiKey: keyInput.value.trim() });
 });
 
 // Regroupe les acceptations trouvées dans tous les cadres de la page.
