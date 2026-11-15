@@ -1,5 +1,7 @@
 
-const MODEL = "gemini-flash-latest";
+// Si un modèle est surchargé (503) ou limité (429), on réessaie puis on passe au suivant
+const MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+const RETRYABLE = [429, 500, 503, 504];
 const MAX_CHARS = 1000000;
 const MIN_CHARS = 300; 
 
@@ -75,36 +77,44 @@ async function analyser(texte) {
     throw new Error("Text too short to be analyzed.");
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 60000);
-  let res;
-  try {
-    res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-    {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": geminiApiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: PROMPT_TOU }] },
-        contents: [{ role: "user", parts: [{ text: propre.slice(0, MAX_CHARS) }] }],
-        generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
-      }),
-    }
-    );
-  } catch (e) {
-    if (e.name === "AbortError") throw new Error("Gemini took more than 60 seconds to answer. Try again.");
-    throw e;
-  } finally {
-    clearTimeout(timer);
-  }
+  const body = JSON.stringify({
+    systemInstruction: { parts: [{ text: PROMPT_TOU }] },
+    contents: [{ role: "user", parts: [{ text: propre.slice(0, MAX_CHARS) }] }],
+    generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
+  });
 
-  if (!res.ok) {
-    throw new Error(`Gemini error ${res.status}: ${await res.text()}`);
+  let res;
+  let lastError = "";
+  for (const model of MODELS) {
+    for (let essai = 0; essai < 2; essai++) {
+      if (essai > 0) await attendre(2000);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60000);
+      try {
+        res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: "POST",
+            signal: controller.signal,
+            headers: { "Content-Type": "application/json", "x-goog-api-key": geminiApiKey },
+            body,
+          }
+        );
+      } catch (e) {
+        res = null;
+        lastError = e.name === "AbortError" ? "Gemini took more than 60 seconds to answer." : e.message;
+        continue;
+      } finally {
+        clearTimeout(timer);
+      }
+      if (res.ok) break;
+      lastError = `Gemini error ${res.status}: ${await res.text()}`;
+      if (!RETRYABLE.includes(res.status)) throw new Error(lastError); // clé invalide, etc. : inutile de réessayer
+      res = null;
+    }
+    if (res) break;
   }
+  if (!res) throw new Error(`${lastError}\n(Tried ${MODELS.length} models. Try again in a minute.)`);
 
   const data = await res.json();
   const content = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
