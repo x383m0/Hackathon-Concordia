@@ -1,6 +1,5 @@
 
-// Un seul modèle : Gemini 3.5 Flash Lite (500 requêtes/jour gratuites). On réessaie une fois si besoin
-const MODELS = ["gemini-3.5-flash-lite"];
+const DEFAULT_MODEL = "gemini-3.5-flash-lite"; // modifiable dans les réglages
 // Quota gratuit : 500 requêtes/jour pour les modèles Lite, seulement 20 pour les Flash, donc on évite de gaspiller
 const RETRYABLE = [404, 429, 500, 503, 504]; // 404 = modèle retiré, on passe au suivant
 const MAX_CHARS = 1000000;
@@ -91,7 +90,8 @@ function progres(text) {
 }
 
 async function analyser(texte) {
-  const { geminiApiKey } = await chrome.storage.local.get("geminiApiKey");
+  const { geminiApiKey, geminiModel } = await chrome.storage.local.get(["geminiApiKey", "geminiModel"]);
+  const MODELS = [(geminiModel || "").trim() || DEFAULT_MODEL];
   if (!geminiApiKey) {
     throw new Error('Add your Gemini API key in the "API Key" field of the popup.');
   }
@@ -142,7 +142,7 @@ async function analyser(texte) {
     }
     if (res) break;
   }
-  if (!res) throw new Error(`${lastError}\n(Tried ${MODELS.length} models. Try again in a minute.)`);
+  if (!res) throw new Error(`${lastError}\n(Model: ${MODELS[0]}. Try again in a minute.)`);
 
   const data = await res.json();
   const content = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");

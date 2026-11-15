@@ -2,7 +2,6 @@
 
 const resultDiv = document.getElementById("result");
 const aiDiv = document.getElementById("ai");
-const keyInput = document.getElementById("api");
 
 const isHttp = (url) => /^https?:\/\//i.test(url || "");
 
@@ -112,7 +111,8 @@ function toItem(raw) {
   const explanation = raw.explanation || raw.description || raw.details || "";
   if (!title && !explanation) return null; // élément vide : on l'ignore
 
-  return { title, explanation, severity: raw.severity };
+  const quote = typeof raw.quote === "string" ? raw.quote.trim() : "";
+  return { title, explanation, severity: raw.severity, quote };
 }
 
 // Ajoute un titre suivi d'une liste à puces
@@ -127,6 +127,12 @@ function addList(box, title, items) {
   for (const item of items) {
     const li = document.createElement("li");
     li.textContent = item.title && item.explanation ? `${item.title}: ${item.explanation}` : item.title || item.explanation;
+    if (item.quote) {
+      const q = document.createElement("div");
+      q.className = "quote";
+      q.textContent = `“${item.quote}”`; // extrait exact du texte analysé
+      li.appendChild(q);
+    }
     ul.appendChild(li);
   }
   box.appendChild(ul);
@@ -192,11 +198,11 @@ chrome.runtime.onMessage.addListener((message) => {
 // Transforme les erreurs techniques en messages compréhensibles
 function friendlyError(message) {
   const m = String(message || "");
-  if (/API key not valid|API_KEY_INVALID|error 40[13]/i.test(m)) return "Your Gemini API key isn't valid. Get a free one at aistudio.google.com/apikey and paste it above.";
-  if (/Add your Gemini API key/i.test(m)) return "Add your Gemini API key in the field above first (free at aistudio.google.com/apikey).";
+  if (/API key not valid|API_KEY_INVALID|error 40[13]/i.test(m)) return "Your Gemini API key isn't valid. Get a free one at aistudio.google.com/apikey and paste it in Settings.";
+  if (/Add your Gemini API key/i.test(m)) return "Open Settings (⚙) and add your Gemini API key first (free at aistudio.google.com/apikey).";
   if (/error 429/i.test(m)) return "You've reached the free Gemini limit. Wait a minute, or try again tomorrow.";
   if (/error (500|503|504)|took more than/i.test(m)) return "Gemini is busy or slow right now. Try again in a moment.";
-  if (/error 404/i.test(m)) return "The AI model isn't available anymore. The extension needs an update.";
+  if (/error 404/i.test(m)) return "The AI model isn't available. Pick another one in Settings (⚙).";
   if (/Frame with ID|error page|takes too long to load/i.test(m)) return "The terms page couldn't be loaded. Check your connection and try again.";
   if (/too short|Unable to read/i.test(m)) return "Couldn't read any text on that page. It may need a login or load its text with JavaScript.";
   if (/valid JSON/i.test(m)) return "The AI answered in an unexpected format. Try again.";
@@ -244,12 +250,16 @@ function addAnalyzeButton(parent, url) {
   parent.appendChild(button);
 }
 
-// La clé API reste dans le navigateur, elle n'est jamais écrite dans le code
+// La clé API se règle dans la page de réglages (options.html)
+document.getElementById("settings").addEventListener("click", () => chrome.runtime.openOptionsPage());
+
+// Sans clé, on le dit tout de suite
 chrome.storage.local.get("geminiApiKey").then(({ geminiApiKey }) => {
-  if (geminiApiKey) keyInput.value = geminiApiKey;
-});
-keyInput.addEventListener("input", () => {
-  chrome.storage.local.set({ geminiApiKey: keyInput.value.trim() });
+  if (!geminiApiKey) {
+    const hint = document.getElementById("settings");
+    hint.textContent = "⚙ Add your Gemini API key";
+    hint.style.borderColor = "#e53935";
+  }
 });
 
 // Regroupe les acceptations trouvées dans tous les cadres de la page.
