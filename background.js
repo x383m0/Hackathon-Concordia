@@ -1,6 +1,6 @@
 
-// Si un modèle est surchargé (503) ou limité (429), on réessaie puis on passe au suivant
-const MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash"];
+// Un seul modèle : Gemini 3.5 Flash Lite (500 requêtes/jour gratuites). On réessaie une fois si besoin
+const MODELS = ["gemini-3.5-flash-lite"];
 // Quota gratuit : 500 requêtes/jour pour les modèles Lite, seulement 20 pour les Flash, donc on évite de gaspiller
 const RETRYABLE = [404, 429, 500, 503, 504]; // 404 = modèle retiré, on passe au suivant
 const MAX_CHARS = 1000000;
