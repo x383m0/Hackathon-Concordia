@@ -66,6 +66,12 @@ Details:
 - "criteria": 0 = no or not mentioned, 1 = partial or vague, 2 = yes, clearly. Do not compute any overall score: it is computed separately.`;
 
 // Envoie le texte à Gemini et renvoie le JSON de l'analyse
+// Dit au popup où on en est (il l'ignore s'il est fermé)
+function progres(text) {
+  console.log("[FinePrint]", text);
+  chrome.runtime.sendMessage({ type: "PROGRESS", text }).catch(() => {});
+}
+
 async function analyser(texte) {
   const { geminiApiKey } = await chrome.storage.local.get("geminiApiKey");
   if (!geminiApiKey) {
@@ -77,6 +83,7 @@ async function analyser(texte) {
     throw new Error("Text too short to be analyzed.");
   }
 
+  progres(`Sending ${propre.length} characters to Gemini…`);
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: PROMPT_TOU }] },
     contents: [{ role: "user", parts: [{ text: propre.slice(0, MAX_CHARS) }] }],
@@ -88,6 +95,7 @@ async function analyser(texte) {
   for (const model of MODELS) {
     for (let essai = 0; essai < 2; essai++) {
       if (essai > 0) await attendre(2000);
+      progres(`Asking ${model}${essai ? " (retry)" : ""}…`);
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 60000);
       try {
@@ -182,9 +190,11 @@ async function texteDepuisLien(url) {
     throw new Error("Invalid link: only http(s) addresses are accepted.");
   }
 
+  progres("Opening the terms page…");
   const tab = await chrome.tabs.create({ url, active: false });
   try {
     await attendreChargement(tab.id);
+    progres("Reading the page…");
     await attendre(1500); // certaines pages se construisent en JavaScript après le chargement
 
     let page = await lirePage(tab.id);
@@ -206,6 +216,7 @@ async function texteDepuisLien(url) {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "ANALYZE_LINK") return;
+  progres("Started (v3 background)");
 
   (async () => {
     const page = await texteDepuisLien(message.url);

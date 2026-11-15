@@ -171,6 +171,13 @@ function renderAiResult(result) {
   showAi(box);
 }
 
+// Le background annonce chaque étape pendant l'analyse
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "PROGRESS" && aiDiv.firstChild?.classList.contains("ai-box")) {
+    aiDiv.firstChild.textContent = "⏳ " + message.text;
+  }
+});
+
 // Demande l'analyse au background et affiche le résultat
 async function runAnalysis(url, button) {
   const label = button.textContent;
