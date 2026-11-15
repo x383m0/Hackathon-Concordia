@@ -9,7 +9,7 @@
     "storage"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://generativelanguage.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -23,5 +23,9 @@
     "16": "icon.png",
     "48": "icon.png",
     "128": "icon.png"
-  }
+  },
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ]
 }
