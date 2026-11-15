@@ -1,6 +1,5 @@
 
-// Un seul modèle : Gemini 3.5 Flash Lite (500 requêtes/jour gratuites). On réessaie une fois si besoin
-const MODELS = ["gemini-3.5-flash-lite"];
+const DEFAULT_MODEL = "gemini-3.5-flash-lite"; // modifiable dans les réglages
 // Quota gratuit : 500 requêtes/jour pour les modèles Lite, seulement 20 pour les Flash, donc on évite de gaspiller
 const RETRYABLE = [404, 429, 500, 503, 504]; // 404 = modèle retiré, on passe au suivant
 const MAX_CHARS = 1000000;
@@ -67,6 +66,23 @@ Details:
 - "criteria": 0 = no or not mentioned, 1 = partial or vague, 2 = yes, clearly. Do not compute any overall score: it is computed separately.`;
 
 // Envoie le texte à Gemini et renvoie le JSON de l'analyse
+// Cache des analyses par adresse : évite de refaire (et de payer) une analyse récente
+const CACHE_TTL = 7 * 24 * 3600 * 1000; // 7 jours
+const CACHE_MAX = 50;
+
+async function lireCache(url) {
+  const { analysisCache = {} } = await chrome.storage.local.get("analysisCache");
+  const entry = analysisCache[url];
+  return entry && Date.now() - entry.time < CACHE_TTL ? entry.result : null;
+}
+
+async function ecrireCache(url, result) {
+  const { analysisCache = {} } = await chrome.storage.local.get("analysisCache");
+  analysisCache[url] = { time: Date.now(), result };
+  const recent = Object.entries(analysisCache).sort((a, b) => b[1].time - a[1].time).slice(0, CACHE_MAX);
+  await chrome.storage.local.set({ analysisCache: Object.fromEntries(recent) });
+}
+
 // Dit au popup où on en est (il l'ignore s'il est fermé)
 function progres(text) {
   console.log("[FinePrint]", text);
@@ -74,7 +90,8 @@ function progres(text) {
 }
 
 async function analyser(texte) {
-  const { geminiApiKey } = await chrome.storage.local.get("geminiApiKey");
+  const { geminiApiKey, geminiModel } = await chrome.storage.local.get(["geminiApiKey", "geminiModel"]);
+  const MODELS = [(geminiModel || "").trim() || DEFAULT_MODEL];
   if (!geminiApiKey) {
     throw new Error('Add your Gemini API key in the "API Key" field of the popup.');
   }
@@ -125,7 +142,7 @@ async function analyser(texte) {
     }
     if (res) break;
   }
-  if (!res) throw new Error(`${lastError}\n(Tried ${MODELS.length} models. Try again in a minute.)`);
+  if (!res) throw new Error(`${lastError}\n(Model: ${MODELS[0]}. Try again in a minute.)`);
 
   const data = await res.json();
   const content = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
@@ -222,8 +239,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   progres("Started (v3 background)");
 
   (async () => {
+    if (!message.force) {
+      const cached = await lireCache(message.url);
+      if (cached) return { ok: true, result: { ...cached, cached: true } };
+    }
     const page = await texteDepuisLien(message.url);
-    return { ok: true, result: await analyser(page.text) };
+    const result = await analyser(page.text);
+    await ecrireCache(message.url, result);
+    return { ok: true, result };
   })()
     .then(sendResponse)
     .catch((err) => sendResponse({ ok: false, error: err.message }));

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FinePrint settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <header>
+      <img src="icon.png" alt="" width="48" height="48">
+      <div>
+        <h1>FinePrint settings</h1>
+        <p>Because nobody reads the terms.</p>
+      </div>
+    </header>
+
+    <section>
+      <label for="key">Gemini API key</label>
+      <div class="row">
+        <input id="key" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false">
+        <button id="toggle" type="button">Show</button>
+      </div>
+      <p class="help">Free at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. The key stays in this browser and is only sent to Google.</p>
+    </section>
+
+    <section>
+      <label for="model">Model</label>
+      <input id="model" type="text" list="models" placeholder="gemini-3.5-flash-lite" autocomplete="off" spellcheck="false">
+      <datalist id="models">
+        <option value="gemini-3.5-flash-lite"></option>
+        <option value="gemini-3.1-flash-lite"></option>
+        <option value="gemini-3.8-flash"></option>
+      </datalist>
+      <p class="help">Leave empty for the default (<code>gemini-3.5-flash-lite</code>: fast, about 500 free requests a day). Flash models are smarter but the free tier is limited to about 20 a day.</p>
+    </section>
+
+    <section>
+      <button id="clear-cache" type="button">Clear saved analyses</button>
+      <p class="help" id="cache-info"></p>
+    </section>
+
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>
