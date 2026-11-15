@@ -1,5 +1,8 @@
 
-const MODEL = "gemini-flash-latest";
+// Un seul modèle : Gemini 3.5 Flash Lite (500 requêtes/jour gratuites). On réessaie une fois si besoin
+const MODELS = ["gemini-3.5-flash-lite"];
+// Quota gratuit : 500 requêtes/jour pour les modèles Lite, seulement 20 pour les Flash, donc on évite de gaspiller
+const RETRYABLE = [404, 429, 500, 503, 504]; // 404 = modèle retiré, on passe au suivant
 const MAX_CHARS = 1000000;
 const MIN_CHARS = 300; 
 
@@ -64,6 +67,12 @@ Details:
 - "criteria": 0 = no or not mentioned, 1 = partial or vague, 2 = yes, clearly. Do not compute any overall score: it is computed separately.`;
 
 // Envoie le texte à Gemini et renvoie le JSON de l'analyse
+// Dit au popup où on en est (il l'ignore s'il est fermé)
+function progres(text) {
+  console.log("[FinePrint]", text);
+  chrome.runtime.sendMessage({ type: "PROGRESS", text }).catch(() => {});
+}
+
 async function analyser(texte) {
   const { geminiApiKey } = await chrome.storage.local.get("geminiApiKey");
   if (!geminiApiKey) {
@@ -75,25 +84,48 @@ async function analyser(texte) {
     throw new Error("Text too short to be analyzed.");
   }
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": geminiApiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: PROMPT_TOU }] },
-        contents: [{ role: "user", parts: [{ text: propre.slice(0, MAX_CHARS) }] }],
-        generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
-      }),
-    }
-  );
+  progres(`Sending ${propre.length} characters to Gemini…`);
+  const body = JSON.stringify({
+    systemInstruction: { parts: [{ text: PROMPT_TOU }] },
+    contents: [{ role: "user", parts: [{ text: propre.slice(0, MAX_CHARS) }] }],
+    generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
+  });
 
-  if (!res.ok) {
-    throw new Error(`Gemini error ${res.status}: ${await res.text()}`);
+  let res;
+  let lastError = "";
+  for (const model of MODELS) {
+    for (let essai = 0; essai < 2; essai++) {
+      if (essai > 0) await attendre(2000);
+      progres(`Asking ${model}${essai ? " (retry)" : ""}…`);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      try {
+        res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: "POST",
+            signal: controller.signal,
+            headers: { "Content-Type": "application/json", "x-goog-api-key": geminiApiKey },
+            body,
+          }
+        );
+      } catch (e) {
+        res = null;
+        lastError = e.name === "AbortError" ? "Gemini took more than 45 seconds to answer." : e.message;
+        continue;
+      } finally {
+        clearTimeout(timer);
+      }
+      if (res.ok) break;
+      lastError = `Gemini error ${res.status}: ${await res.text()}`;
+      if (!RETRYABLE.includes(res.status)) throw new Error(lastError); // clé invalide, etc. : inutile de réessayer
+      progres(`${model} failed (${res.status}), trying the next one…`);
+      res = null;
+      if (/ (404|429):/.test(lastError)) break; // modèle retiré ou quota atteint : réessayer ne sert à rien
+    }
+    if (res) break;
   }
+  if (!res) throw new Error(`${lastError}\n(Tried ${MODELS.length} models. Try again in a minute.)`);
 
   const data = await res.json();
   const content = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
@@ -161,9 +193,11 @@ async function texteDepuisLien(url) {
     throw new Error("Invalid link: only http(s) addresses are accepted.");
   }
 
+  progres("Opening the terms page…");
   const tab = await chrome.tabs.create({ url, active: false });
   try {
     await attendreChargement(tab.id);
+    progres("Reading the page…");
     await attendre(1500); // certaines pages se construisent en JavaScript après le chargement
 
     let page = await lirePage(tab.id);
@@ -185,6 +219,7 @@ async function texteDepuisLien(url) {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "ANALYZE_LINK") return;
+  progres("Started (v3 background)");
 
   (async () => {
     const page = await texteDepuisLien(message.url);

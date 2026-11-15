@@ -171,6 +171,13 @@ function renderAiResult(result) {
   showAi(box);
 }
 
+// Le background annonce chaque étape pendant l'analyse
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "PROGRESS" && aiDiv.firstChild?.classList.contains("ai-box")) {
+    aiDiv.firstChild.textContent = "⏳ " + message.text;
+  }
+});
+
 // Demande l'analyse au background et affiche le résultat
 async function runAnalysis(url, button) {
   const label = button.textContent;
@@ -180,7 +187,11 @@ async function runAnalysis(url, button) {
   showAi(text("⏳ AI analysis (a few seconds)…"));
 
   try {
-    const response = await chrome.runtime.sendMessage({ type: "ANALYZE_LINK", url });
+    // Sécurité : si le background ne répond jamais, on arrête d'attendre
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("No answer after 2 minutes. Reload the extension and try again.")), 120000)
+    );
+    const response = await Promise.race([chrome.runtime.sendMessage({ type: "ANALYZE_LINK", url }), timeout]);
     if (!response?.ok) throw new Error(response?.error || "Unknown error");
     renderAiResult(response.result);
   } catch (e) {

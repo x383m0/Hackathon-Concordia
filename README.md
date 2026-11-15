@@ -4,3 +4,35 @@
 A Chrome extension built for **Hackathon Découverte Concordia 2026**.
 
 FinePrint spots when a website asks you to accept its Terms of Service or Privacy Policy, reads the document for you, and tells you in plain language what you are agreeing to.
+
+## How it works
+
+1. Open the popup on a page with a sign-up form or a "by continuing you accept…" notice.
+2. FinePrint detects the terms or privacy-policy link (checkbox or implicit acceptance, in English and French).
+3. Click **Analyze with AI**. The linked document is opened in a hidden tab, its text is read, and Gemini summarizes it.
+4. You get a recommendation, a list of risks and favorable points, and a 0–100 score on the gauge.
+
+## Install
+
+1. Clone or download this repository.
+2. Open `chrome://extensions` and turn on **Developer mode**.
+3. Click **Load unpacked** and select the repository folder (the one containing `manifest.json`).
+4. Get a free Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and paste it into the **API Key** field of the popup.
+
+## Files
+
+| File | Role |
+|---|---|
+| `manifest.json` | Extension manifest (Manifest V3) |
+| `extension.html` / `extension.css` / `extension.js` | Popup UI, gauge and score calculation |
+| `detector.js` | Injected in the page to find terms acceptances |
+| `background.js` | Opens the terms page, reads it, calls Gemini (`gemini-3.5-flash-lite`) |
+
+## Privacy
+
+- Your API key is stored only in your browser (`chrome.storage.local`), never in the code.
+- The text of the terms you analyze is sent to Google's Gemini API. Nothing else from the page is sent. On the free tier, Google may use submitted content to improve its products.
+
+## Presentation
+
+[Slides](https://docs.google.com/presentation/d/113rWbCeLpDQ16BDayJHOl-AymdDe-8NRU9l6fvCi4Xo/edit?usp=sharing)
