@@ -67,6 +67,23 @@ Details:
 - "criteria": 0 = no or not mentioned, 1 = partial or vague, 2 = yes, clearly. Do not compute any overall score: it is computed separately.`;
 
 // Envoie le texte à Gemini et renvoie le JSON de l'analyse
+// Cache des analyses par adresse : évite de refaire (et de payer) une analyse récente
+const CACHE_TTL = 7 * 24 * 3600 * 1000; // 7 jours
+const CACHE_MAX = 50;
+
+async function lireCache(url) {
+  const { analysisCache = {} } = await chrome.storage.local.get("analysisCache");
+  const entry = analysisCache[url];
+  return entry && Date.now() - entry.time < CACHE_TTL ? entry.result : null;
+}
+
+async function ecrireCache(url, result) {
+  const { analysisCache = {} } = await chrome.storage.local.get("analysisCache");
+  analysisCache[url] = { time: Date.now(), result };
+  const recent = Object.entries(analysisCache).sort((a, b) => b[1].time - a[1].time).slice(0, CACHE_MAX);
+  await chrome.storage.local.set({ analysisCache: Object.fromEntries(recent) });
+}
+
 // Dit au popup où on en est (il l'ignore s'il est fermé)
 function progres(text) {
   console.log("[FinePrint]", text);
@@ -241,8 +258,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   progres("Started (v3 background)");
 
   (async () => {
+    if (!message.force) {
+      const cached = await lireCache(message.url);
+      if (cached) return { ok: true, result: { ...cached, cached: true } };
+    }
     const page = await texteDepuisLien(message.url);
-    return { ok: true, result: await analyser(page.text) };
+    const result = await analyser(page.text);
+    await ecrireCache(message.url, result);
+    return { ok: true, result };
   })()
     .then(sendResponse)
     .catch((err) => sendResponse({ ok: false, error: err.message, needOrigin: err.needOrigin || null }));

@@ -138,7 +138,7 @@ function cleanList(list) {
 }
 
 // Affiche l'analyse : recommandation, résumé, risques et points favorables, et met la note sur la jauge
-function renderAiResult(result) {
+function renderAiResult(result, reanalyze) {
   if (result.valid_document === false) {
     setGauge(null);
     return showAi(text("⚠️ This page does not look like terms of use or a privacy policy."));
@@ -164,6 +164,17 @@ function renderAiResult(result) {
   addList(box, "Risks", risks);
   addList(box, "Favorable points", cleanList(result.favorable_points));
 
+  if (result.cached) {
+    box.appendChild(text("(Saved result from an earlier analysis.)"));
+    if (reanalyze) {
+      const again = document.createElement("button");
+      again.textContent = "Re-analyze";
+      again.style.marginTop = "6px";
+      again.addEventListener("click", reanalyze);
+      box.appendChild(again);
+    }
+  }
+
   if (result.truncated) {
     box.appendChild(text("(Very long text: only the first part was analyzed.)"));
   }
@@ -178,9 +189,23 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
+// Transforme les erreurs techniques en messages compréhensibles
+function friendlyError(message) {
+  const m = String(message || "");
+  if (/API key not valid|API_KEY_INVALID|error 40[13]/i.test(m)) return "Your Gemini API key isn't valid. Get a free one at aistudio.google.com/apikey and paste it above.";
+  if (/Add your Gemini API key/i.test(m)) return "Add your Gemini API key in the field above first (free at aistudio.google.com/apikey).";
+  if (/error 429/i.test(m)) return "You've reached the free Gemini limit. Wait a minute, or try again tomorrow.";
+  if (/error (500|503|504)|took more than/i.test(m)) return "Gemini is busy or slow right now. Try again in a moment.";
+  if (/error 404/i.test(m)) return "The AI model isn't available anymore. The extension needs an update.";
+  if (/Frame with ID|error page|takes too long to load/i.test(m)) return "The terms page couldn't be loaded. Check your connection and try again.";
+  if (/too short|Unable to read/i.test(m)) return "Couldn't read any text on that page. It may need a login or load its text with JavaScript.";
+  if (/valid JSON/i.test(m)) return "The AI answered in an unexpected format. Try again.";
+  return m;
+}
+
 // Demande l'analyse au background et affiche le résultat.
 // Renvoie un site à autoriser si le background en a besoin (redirection vers un autre site), sinon null.
-async function runAnalysis(url, button, extraOrigin) {
+async function runAnalysis(url, button, extraOrigin, force = false) {
   const label = button.textContent;
   button.disabled = true;
   button.textContent = "Analyzing…";
@@ -198,7 +223,7 @@ async function runAnalysis(url, button, extraOrigin) {
     const timeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("No answer after 2 minutes. Reload the extension and try again.")), 120000)
     );
-    const response = await Promise.race([chrome.runtime.sendMessage({ type: "ANALYZE_LINK", url }), timeout]);
+    const response = await Promise.race([chrome.runtime.sendMessage({ type: "ANALYZE_LINK", url, force }), timeout]);
     if (!response?.ok) {
       if (response?.needOrigin) {
         showAi(text(`⚠️ The link leads to ${response.needOrigin}. Click Analyze again to allow it.`), true);
@@ -206,9 +231,16 @@ async function runAnalysis(url, button, extraOrigin) {
       }
       throw new Error(response?.error || "Unknown error");
     }
-    renderAiResult(response.result);
+    renderAiResult(response.result, () => runAnalysis(url, button, null, true));
   } catch (e) {
-    showAi(text("⚠️ " + e.message), true);
+    const box = document.createElement("div");
+    box.appendChild(text("⚠️ " + friendlyError(e.message)));
+    const retry = document.createElement("button");
+    retry.textContent = "Retry";
+    retry.style.marginTop = "6px";
+    retry.addEventListener("click", () => button.click());
+    box.appendChild(retry);
+    showAi(box, true);
   } finally {
     button.disabled = false;
     button.textContent = label;

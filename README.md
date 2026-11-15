@@ -28,6 +28,25 @@ FinePrint spots when a website asks you to accept its Terms of Service or Privac
 | `detector.js` | Injected in the page to find terms acceptances |
 | `background.js` | Opens the terms page, reads it, calls Gemini (`gemini-3.5-flash-lite`) |
 
+## Permissions
+
+- `activeTab` + `scripting`: read the page you have open, only when you open the popup.
+- `storage`: keep your API key and recent analyses in your browser.
+- Access to `generativelanguage.googleapis.com`: to call Gemini.
+- Per-site access (asked when you click **Analyze**): to read the terms page the link leads to. FinePrint never gets blanket access to all sites.
+
+Results are cached for 7 days (up to 50 documents) so repeat analyses are instant.
+
+## Tests
+
+```bash
+npm install
+npx playwright install chromium   # if Chromium isn't installed yet
+npm test
+```
+
+The tests load small fixture pages (`tests/fixtures/`) and check what `detector.js` finds.
+
 ## Privacy
 
 - Your API key is stored only in your browser (`chrome.storage.local`), never in the code.
