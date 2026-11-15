@@ -75,10 +75,15 @@ async function analyser(texte) {
     throw new Error("Text too short to be analyzed.");
   }
 
-  const res = await fetch(
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+  let res;
+  try {
+    res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
     {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
         "x-goog-api-key": geminiApiKey,
@@ -89,7 +94,13 @@ async function analyser(texte) {
         generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
       }),
     }
-  );
+    );
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("Gemini took more than 60 seconds to answer. Try again.");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!res.ok) {
     throw new Error(`Gemini error ${res.status}: ${await res.text()}`);
